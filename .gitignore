@@ -1,3 +1,7 @@
+# Quarto render artifacts
+*.html
+*_files/
+
 # History files
 .Rhistory
 .Rapp.history
