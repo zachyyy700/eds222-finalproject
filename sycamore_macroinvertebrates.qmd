@@ -70,6 +70,8 @@ ggplot(filtered_top10, aes(date, count)) +
   geom_jitter(aes(color = taxon)) 
 ```
 
+Any relationship is still not quite clear, try aggregating.
+
 ```{r}
 # Aggregate data by season
 season_counts <- filtered_top10 |> 
@@ -96,4 +98,4 @@ ggplot(year_counts, aes(month, count_total, color = taxon)) +
   facet_wrap(~year, nrow = 2)
 ```
 
-
+The question I had in mind was if seasons could be a predictor of taxon groups, or even taxonomic composition within this data. After this exploratory investigation, the only seasons that data was recorded in are spring and summer and so far, a relationship is not clear even after aggregating a couple ways. Another way to aggregate is to find the composition of each of the top10 taxons and maybe plot some relationship that way.
