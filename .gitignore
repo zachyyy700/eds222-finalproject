@@ -1,3 +1,6 @@
+# Data folder
+data/
+
 # Quarto render artifacts
 *.html
 *_files/
