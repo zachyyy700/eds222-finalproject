@@ -14,17 +14,11 @@ theme_set(theme_classic())
 Dataset description: Urban lakes are heavily impacted by human activities and climate variability, and they provide many ecosystem services to residents. The MSP LTER program is studying long term changes in urban lake water quality, ecology and management as part of our long term studies of urban environments. The goal of this dataset is to understand how land-use change, management, and climate have impacted urban lake biogeochemistry over time. This dataset includes parameters characterizing the long term (\> 5 years) surface water quality and chemistry of 294 lakes and ponds in the Minneapolis-Saint Paul Seven County Metropolitan Area, Minnesota, USA
 
 ```{r}
-df <- read_csv(here::here('data', "Timeseries_v6_forEDI.csv"))
+lakes <- read_csv(here::here('data', "Timeseries_v6_forEDI.csv"))
 ```
 
 ```{r}
-df_recent <- df |> 
-  mutate(year = year(sampleDate)) |> 
-  filter(year >= 2000)
-```
-
-```{r}
-stats <- df |> 
+stats <- lakes |> 
   group_by(parameter) |> 
   summarise(obs_count = n(),
             min = min(result),
@@ -35,9 +29,13 @@ stats <- df |>
 ```
 
 ```{r}
-ggplot(df, aes(parameter, result)) +
+ggplot(lakes, aes(parameter, result)) +
   geom_boxplot() +
   coord_flip()
+```
+
+```{r}
+lakes |> filter(parameter == "secchi.m") |> ggplot() + geom_line(aes(sampleDate, result))
 ```
 
 **Model thoughts:**
@@ -48,24 +46,24 @@ ggplot(df, aes(parameter, result)) +
 
 **State hypothesis**
 
--   On average, pollution concentrations in urban Minnesota lakes, increase over time.
+-   There is a relationship between total phosphorus (response) and secchi depth as turbidity measurement (predictor).
 
 **Model in statistical notation**
 
-$$Concentration \sim Gamma(\alpha, \beta) \\ \log(\mu) = \beta_0 + \beta_1 * Time$$
+$$PConcentration \sim Gamma(\alpha, \beta) \\ \log(\mu) = \beta_0 + \beta_1 * SecchiDepth$$
 
 -   Response Family: Gamma
 
 -   Link Function: log()
 
--   Predictor: Time
+-   Predictor: Secchi Disk Depth
 
--   $H_0$: $\beta_1$ \<= 0
+-   $H_0$: $\beta_1 = 0$
 
--   $H_1$: $\beta_1$ \> 0
+-   $H_1$: $\beta_1 \neq 0$
 
-## Fit model
+## Fit model to simulated data
 
 ```{r}
-model <- glm()
+
 ```
