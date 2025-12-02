@@ -14,17 +14,28 @@ theme_set(theme_classic())
 Dataset description: Urban lakes are heavily impacted by human activities and climate variability, and they provide many ecosystem services to residents. The MSP LTER program is studying long term changes in urban lake water quality, ecology and management as part of our long term studies of urban environments. The goal of this dataset is to understand how land-use change, management, and climate have impacted urban lake biogeochemistry over time. This dataset includes parameters characterizing the long term (\> 5 years) surface water quality and chemistry of 294 lakes and ponds in the Minneapolis-Saint Paul Seven County Metropolitan Area, Minnesota, USA
 
 ```{r}
-df <- read_csv(here::here('data', "Timeseries_v6_forEDI.csv"))
+lakes <- read_csv(here::here('data', "Timeseries_v6_forEDI.csv")) |> 
+  mutate(year = year(sampleDate))
 ```
 
 ```{r}
-df_recent <- df |> 
+lakes_wide <- lakes |> 
+  pivot_wider(names_from = parameter, values_from = result)
+```
+
+```{r}
+lakes_nonzero <- lakes |> 
+  filter(result > 0)
+```
+
+```{r}
+lakes_recent <- lakes |> 
   mutate(year = year(sampleDate)) |> 
   filter(year >= 2000)
 ```
 
 ```{r}
-stats <- df |> 
+stats <- lakes |> 
   group_by(parameter) |> 
   summarise(obs_count = n(),
             min = min(result),
@@ -35,7 +46,7 @@ stats <- df |>
 ```
 
 ```{r}
-ggplot(df, aes(parameter, result)) +
+ggplot(lakes, aes(parameter, result)) +
   geom_boxplot() +
   coord_flip()
 ```
@@ -48,11 +59,11 @@ ggplot(df, aes(parameter, result)) +
 
 **State hypothesis**
 
--   On average, pollution concentrations in urban Minnesota lakes, increase over time.
+-   On average, pollution concentrations in urban Minnesota lakes, increase over time, by year.
 
 **Model in statistical notation**
 
-$$Concentration \sim Gamma(\alpha, \beta) \\ \log(\mu) = \beta_0 + \beta_1 * Time$$
+$$Concentration \sim Gamma(\alpha, \sigma) \\ \log(\mu) = \beta_0 + \beta_1 * Time$$
 
 -   Response Family: Gamma
 
@@ -64,8 +75,61 @@ $$Concentration \sim Gamma(\alpha, \beta) \\ \log(\mu) = \beta_0 + \beta_1 * Tim
 
 -   $H_1$: $\beta_1$ \> 0
 
-## Fit model
+In Gamma distributions...
+
+- Mean = $\alpha * \beta$
+
+- Variance = $\alpha * \beta^2$
+
+where alpha is the shape parameter and beta is the scale parameter.
 
 ```{r}
-model <- glm()
+# Plot timeseries for all parameters
+ggplot(lakes, aes(sampleDate, result)) +
+  geom_line() +
+  facet_wrap(~parameter, scales = "free_y")
 ```
+
+```{r}
+ggplot(lakes_nonzero, aes(county, result)) +
+  geom_jitter(aes(color = county))
+```
+
+## Fit model using simulated data
+
+```{r}
+# Plot chlorine histogram of real data
+ggplot(lakes_wide, aes(Cl.mg_L)) +
+  geom_histogram()
+
+# Create simulated year data
+years <- 1980:2024
+n_years <- length(years)
+
+# Define parameters
+shape_values <- seq(1, 8, length.out = n_years)
+scale <- 1
+
+sim_data <- data.frame(
+  year = years,
+  sim_chlorine = sapply(shape_values, function(shape) {
+    rgamma(1, shape = shape, scale = scale)
+  })
+)
+
+# Visualize
+ggplot(sim_data, aes(sim_chlorine)) +
+  geom_histogram()
+ggplot(sim_data, aes(year, sim_chlorine)) +
+  geom_point()
+
+# Fit model to simulated data
+sim_model <- glm(sim_chlorine ~ year, data = sim_data, family = Gamma(link = "log"))
+```
+
+## Fit model to real data
+
+```{r}
+real_model <- glm(Cl.mg_L ~ year, data = lakes_wide, family = Gamma(link = "log"))
+```
+
