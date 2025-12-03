@@ -18,6 +18,12 @@ lakes <- read_csv(here::here('data', "Timeseries_v6_forEDI.csv"))
 ```
 
 ```{r}
+lakes_wide <- lakes |> 
+  pivot_wider(names_from = parameter, values_from = result)
+```
+
+
+```{r}
 stats <- lakes |> 
   group_by(parameter) |> 
   summarise(obs_count = n(),
@@ -50,11 +56,11 @@ lakes |> filter(parameter == "secchi.m") |> ggplot() + geom_line(aes(sampleDate,
 
 **Model in statistical notation**
 
-$$PConcentration \sim Gamma(\alpha, \beta) \\ \log(\mu) = \beta_0 + \beta_1 * SecchiDepth$$
+$$TPConcentration \sim Gamma(\mu, \phi) \\ \log(\mu)? = \beta_0 + \beta_1 * SecchiDepth$$
 
 -   Response Family: Gamma
 
--   Link Function: log()
+-   Link Function: ?
 
 -   Predictor: Secchi Disk Depth
 
@@ -62,8 +68,77 @@ $$PConcentration \sim Gamma(\alpha, \beta) \\ \log(\mu) = \beta_0 + \beta_1 * Se
 
 -   $H_1$: $\beta_1 \neq 0$
 
+
+$$CV = \frac{\sigma}{\mu} \rightarrow \sigma = CV * \mu = \sqrt{\phi} \rightarrow \sigma^2 = (CV * \mu)^2 = \phi$$
+where $\sigma$ is standard deviation and $\phi$ is variance.
+
+
 ## Fit model to simulated data
 
 ```{r}
+# Define parameters
+n_lakes <- 500
 
+mu_pred <- 3
+phi_pred <- 3
+
+mu_resp <- 150
+cv_resp <- 0.2
+
+# Create independent predictor as Gamma variable
+test_pred <- rgamma(n = n_lakes, shape = (mu_pred^2 / phi_pred), scale = (phi_pred / mu_pred))
+
+# Create relationship
+response_mean <- mu_resp + 6 * test_pred
+# Ensure variance scales with mean
+phi_resp <- (cv_resp * response_mean)^2
+
+test_resp <- rgamma(n = n_lakes, shape = (response_mean^2 / phi_resp), scale = (phi_resp / response_mean))
+
+test_df <- data.frame(test_pred, test_resp)
+
+ggplot(test_df, aes(test_pred, test_resp)) +
+  geom_point()
+
+test_model <- glm(test_resp ~ test_pred, data = test_df, family = Gamma(link = 'identity'))
+
+# Estimated shape
+shape_est <- 1/summary(test_model)$dispersion
+# Estimated scale
+scale_est <- as.numeric(coef(test_model)[1]) / shape_est
+
+hist(test_df$test_pred, breaks = 30, freq = FALSE)
+curve(dgamma(x, shape = (mu_pred^2 / phi_pred), scale = (phi_pred / mu_pred)),
+      col = "red", add = TRUE)
+
+
+hist(test_df$test_resp, breaks = 30, freq = FALSE)
+curve(dgamma(x, shape = shape_est, scale = scale_est), col = "red", add = TRUE)
 ```
+
+## Fit model to real data
+
+```{r}
+real_model <- glm(TP.mg_L ~ secchi.m, data = lakes_wide, family = Gamma(link = "log"))
+# Raw scatter plot
+ggplot(lakes_wide, aes(secchi.m, TP.mg_L)) + geom_point(alpha = 0.1)
+
+hist(lakes_wide$TP.mg_L, breaks = 50)
+```
+
+```{r}
+# Create prediction grid (one predictor for now)
+pred_grid <- tibble(secchi.m = seq(min(lakes_wide$secchi.m, na.rm = TRUE), 
+                                    max(lakes_wide$secchi.m, na.rm = TRUE), 
+                                    length.out = 100))
+
+# Generate predictions
+pred_grid <- pred_grid |> 
+  mutate(pred_TP = predict(real_model, newdata = pred_grid, type = "response"))
+
+# Plot
+ggplot() + 
+  geom_point(data = lakes_wide, aes(secchi.m, TP.mg_L), alpha = 0.3) +
+  geom_line(data = pred_grid, aes(secchi.m, pred_TP), color = 'red', linewidth = 1)
+```
+
