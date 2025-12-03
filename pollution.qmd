@@ -124,7 +124,14 @@ real_model <- glm(TP.mg_L ~ secchi.m, data = lakes_wide, family = Gamma(link = "
 ggplot(lakes_wide, aes(secchi.m, TP.mg_L)) + geom_point(alpha = 0.1)
 
 hist(lakes_wide$TP.mg_L, breaks = 50)
+
+# Interpreting coefficient for secchi.m
+# Must exponentiate to undo link
+exp(coef(real_model)[2])
+exp(coef(real_model)[1])
 ```
+
+In response space, the coefficient for secchi.m (beta1) is about 0.70. Meaning, for every 1 meter increase of Secchi depth (clearer waters), total phosphorus (TP) decreases by 30% (multiplied by 0.70). The intercept coefficient (beta0) represents TP when Secchi is 0 meters. Undo-ing the link, this value is estimated at 0.12 mg/L.
 
 ```{r}
 # Create prediction grid (one predictor for now)
